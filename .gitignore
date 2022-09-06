@@ -1,0 +1,8 @@
+dictionaries/
+icon_inkscape.svg
+icon.svg
+json_schemas/
+node_modules
+**/credentials.py
+tags
+**/serviceAccountKey.json

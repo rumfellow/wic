@@ -1,0 +1,141 @@
+import boto3
+import openai
+from uuid import uuid4
+import deepl
+import json
+from boto3.dynamodb.conditions import Key
+#from credentials import deepl_key
+
+deepl_key = 'a017df0b-590f-7023-9f83-e86cf0fdee34:fx'
+translator = deepl.Translator(deepl_key)
+
+
+class userdata:
+    def __init__(self,native,trans,dictionary, gptkey='none',token='none',phraseortext='phrase'):
+        langs = {'Español':'ES', 'Française':'FR', "Italiana":'IT', "English":'EN-US',
+                 'Русский':'RU', 'Deutsch':'DE'}
+        levels = {"A1 beginner": 'a1','A2 beginner':'a2','B1 intermediate':'b1',
+                     'B2 advanced':'b2', 'C1 proficiency':'c1'}
+        prompts = {'ES':'genera una frasa con %s en español',
+               'FR':'générer une phrase avec un mot %s en français',
+               "IT":'generare una frase con una parola %s in italiano',
+               "EN-US":'generate a phrase with a word %s in English',
+               'RU':'сгенерируй фразу со словом %s на русском языке',
+               'DE':'eine Phrase mit %s auf Deutsch erzeugen'}
+        self.dictionary = dictionary if dictionary != 'Train phrases' else 'tatoeba'
+        self.native = langs[native]
+        self.trans = langs[trans]
+        self.prompt = prompts[self.trans]
+        self.level = levels[dictionary] if self.dictionary != 'tatoeba' else 'n/a'
+        self.gptkey = gptkey
+        self.token = token
+        self.phraseortext = phrase
+
+        def __repr__(self):
+            return  self.native, self.target, self.gptkey, self.level,
+        self.dictionary
+
+jsonbody = {
+    'statusCode': 200,
+    'headers': {'Content-Type': 'application/json'},
+    'body': {'native':'n/a','target':'n/a', 'word':'n/a','translation':'n/a'}
+                }
+
+
+def readdb(db_table='anki_esp_main', limit=1, key='spanish'):
+    '''Читаем рандомно DynamoDB, сортировочного ключа нет'''
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table(db_table)
+    result = table.scan(Limit=1, ExclusiveStartKey={key: str(uuid4())})
+    return result['Items'][0]['spanish'], result['Items'][0]['english']
+
+def readtatoeba(native_lang, target_lang, db_table='tatoeba', limit=1, key='phraseid'):
+    '''Рандомно читаем базу фраз, проверяем есть ли родной язык и перевод, если нет - переводим и записываем обратно'''
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table(db_table)
+    result = table.scan(Limit=1, ExclusiveStartKey={key: str(uuid4())})
+    phraseid = result['Items'][0]['phraseid']
+    body = result['Items'][0]['phrase']
+    native_lang = 'EN' if native_lang == 'EN-US' else native_lang
+    translate = lambda a,b: translator.translate_text(text=a, target_lang=b).text
+    if native_lang not in body.keys():
+        native = translate(body['EN'],native_lang)
+        #UpdateExpression добавляет новые значения во вложенный словарь phrase:{language:value}
+        table.update_item(Key={'phraseid':phraseid}, UpdateExpression='SET phrase.'+native_lang+' = :val1', ExpressionAttributeValues = {':val1': native})
+    else:
+        native = body[native_lang]
+    if target_lang not in body.keys():
+        trans = translate(body['EN'],target_lang)
+        table.update_item(Key={'phraseid':phraseid}, UpdateExpression='SET phrase.'+target_lang+' = :val1', ExpressionAttributeValues = {':val1': trans})
+    else:
+        trans = body[target_lang]
+
+    return native, trans
+
+
+def readdbox(native, trans, oxforddb='oxford5000', level='a1'):
+    '''Читаем рандомизированную базу oxford5000'''
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table(oxforddb)
+    result = table.scan(ExclusiveStartKey={'category': level, 'uuid': str(uuid4())})
+    return result['Items'][0]['translations'][native], result['Items'][0]['translations'][trans]
+
+
+def espprompt(prompt):
+    '''передаём GPT-3 запрос на генерацию фразы'''
+    response = openai.Completion.create(
+    model="text-davinci-002",
+    prompt=prompt,
+    temperature=0.9,
+    max_tokens=50,
+    top_p=1,
+    frequency_penalty=0,
+    presence_penalty=0
+    )
+    return response['choices'][0]['text'].strip()
+
+def deepl(text, target_lang):
+    result = translator.translate_text(text=text, target_lang=target_lang)
+    return(result.text)
+
+def handler(event,context):
+
+    eventdata = userdata(native=event['native'],trans=event['trans'],
+                         dictionary=event['dictionary'],gptkey=event['gptAPI'],
+                         phraseortext=event['phraseOrText'])
+
+    if eventdata.dictionary != 'tatoeba' and eventdata.textorphrase == phrase:
+        openai.api_key = eventdata.gptkey
+        reply = jsonbody['body']
+        reply['word'], reply['translation'] = readdbox(eventdata.native, eventdata.trans, level=eventdata.level)
+        reply['target']= espprompt(eventdata.prompt % reply['word'])
+        reply['native'] = deepl(reply['target'],eventdata.native)
+        return jsonbody
+
+    elif eventdata.dictionary == 'tatoeba' and eventdata.textorphrase == phrase:
+        reply = jsonbody['body']
+        result = readtatoeba(eventdata.native,eventdata.trans)
+        reply['native'], reply['target'] = result[0],result[1]
+        return jsonbody
+
+    elif eventdata.textorphrase == text:
+        #add function to generate texts
+        pass
+
+    else:
+        return jsonbody
+
+
+
+'''personal dictionary
+    elif event['dictionary'] == 'Alex"'"s dictionary':
+        openai.api_key = gpt_key
+        wordes, worden = readdb()
+        spanish = espprompt(wordes,prompt)
+        english = deepl(spanish)
+        return {
+    'statusCode': 200,
+    'headers': {'Content-Type': 'application/json'},
+    'body': {'english':english,'spanish':spanish, 'word_en':worden, 'word_es':wordes}
+                }
+'''
