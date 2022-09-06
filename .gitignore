@@ -6,3 +6,4 @@ node_modules
 **/credentials.py
 **/tags
 **/serviceAccountKey.json
+**__pycache__
