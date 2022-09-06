@@ -4,5 +4,5 @@ icon.svg
 json_schemas/
 node_modules
 **/credentials.py
-tags
+**/tags
 **/serviceAccountKey.json
