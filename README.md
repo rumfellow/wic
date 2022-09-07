@@ -4,6 +4,8 @@ It is a pet project aimed at easier foreign lexic and grammar acquisition by mea
 
 In short, words either from the user dictionary or oxford 5000 frequency dictionary are passed on to GPT-3 Da-Vinci2 model for phrase generation in the learned language. Then, the phrase is translated to the user's stated native language. In its turn the app has 3 sliding pages: one with the target phrase, the second has the phrase in native language, and the third - with the word used for generation in target and native languages. 
 
+The app also provides text generation, when a short story is generated using 25 words from the chosen dictionary. Da-Vinci is capable of creating pretty fun stories and styling can be applied in the settings page. 
+
 The idea behind such an approach is better memorization, habitualization of the word use and exposure to new lexical and grammatical constructions.
 
 Apart from the above mentioned is the "Train phrases" dictionary which is based off of Tatoeba projects database. It consists of human-generated random phrases in 6 languages that are supported by the app: English, Spanish, French, Italian, German, Russian. Currently it holds 1,621,780 phrases.
