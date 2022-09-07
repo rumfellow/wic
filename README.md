@@ -24,7 +24,10 @@ All folders with *-lambda contain AWS lambda scripts, that were packaged and dep
 
 You can try the android app by installing [these apks](https://github.com/rumfellow/wic/tree/master/flutter_app/build_apks).
 
-##Structure:
+
+## Structure:
+
 ![wic](https://user-images.githubusercontent.com/109697877/188860910-f2b63509-f627-4038-afc6-8af39e104194.png)
 
-##Structure explained and how it all works
+
+
